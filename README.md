@@ -62,7 +62,7 @@ int main(){
 
 Output of example above:
 
-[output image](Example/output.png)
+![output image](Example/output.png)
 
 ## License
 [MIT](https://choosealicense.com/licenses/mit/)
