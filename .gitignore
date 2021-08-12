@@ -1,2 +1,3 @@
 *.o
 compile.sh
+*.out
