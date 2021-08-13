@@ -38,23 +38,21 @@ namespace Drawing{
 
     typedef int (*shape_fn_ptr)(const Drawable *drawable, double x, double y);
 
-    class Drawable{
-        public:
-            Drawable(void) {}
-            Drawable(Color *color, shape_fn_ptr shape_fn,
-                double lineWidth, std::vector<Point> points){
-                this->color = color;
-                this->shape_fn = shape_fn;
-                this->lineWidth = lineWidth;
-                this->points = points;
-            }
+    struct Drawable{
+        Drawable(void) {}
+        Drawable(Color *color, shape_fn_ptr shape_fn,
+            double lineWidth, std::vector<Point> points){
+            this->color = color;
+            this->shape_fn = shape_fn;
+            this->lineWidth = lineWidth;
+            this->points = points;
+        }
 
-            const struct Color *color;
-            shape_fn_ptr shape_fn;
-            double lineWidth; /* line width, 0 for 'filled' */
-            std::vector<Point> points;
+        const struct Color *color;
+        shape_fn_ptr shape_fn;
+        double lineWidth; /* line width, 0 for 'filled' */
+        std::vector<Point> points;
     };
-
 
 
     class Canvas{
@@ -71,6 +69,9 @@ namespace Drawing{
 
             void bufferToFile(const char* filepath);
 
+            std::size_t getDrawablesSize(void) const { return m_drawables.size(); }
+            Drawable& getDrawable(const unsigned index) { return m_drawables.at(index); }
+
         private:
             std::vector<Drawable> m_drawables;
             png_uint_16p m_buffer;
@@ -79,7 +80,7 @@ namespace Drawing{
 
 
 
-    #if DEFAULT_DRAWING_SHAPE_FUNCS
+#if DEFAULT_DRAWING_SHAPE_FUNCS
 
     static int shape_rect_filled(const Drawing::Drawable *drawable, double x, double y){
         assert(drawable->points.size() >= 2);
@@ -114,5 +115,5 @@ namespace Drawing{
         return _isPointInTriangle(Point(x, y), drawable->points[0], drawable->points[1], drawable->points[2]);
     }
 
-    #endif
+#endif
 }

@@ -82,8 +82,9 @@ void Drawing::Canvas::draw(){
     assert(m_buffer != NULL);
 
     for (png_uint_32 y=0; y<m_image.height; y++){
-        for (png_uint_32 x=0; x<m_image.width; x++)
-            drawPixel(m_buffer + 4*(x + y*m_image.width), m_drawables, x, y);
+        for (png_uint_32 x=0; x<m_image.width; x++){
+            drawPixel(m_buffer + (4*(x + y*m_image.width)), m_drawables, x, y);
+        }
     }
 }
 

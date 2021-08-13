@@ -1,6 +1,6 @@
 #include <vector>
 #include <cassert>
-#include "../Drawing++.hpp" //include Drawing++ header file
+#include "../../Drawing++.hpp" //include Drawing++ header file
 
 //user-defined shape function
 static int shape_square_filled(const Drawing::Drawable *drawable, double x, double y){
@@ -20,15 +20,20 @@ int main(){
             Drawing::Point(370, 280), Drawing::Point(450, 400) 
         }
     )); 
-    //Add Drawable with RGBA(1.0, 0.0, 0.0, 1.0), with 0 line width and vector of two points.
-    //Drawable shape is defined by user function shape_square_filled
-
 
     canvas.addDrawable(Drawing::Drawable(
-        new Drawing::Color(0.0, 1.0, 0.0, 1.0),
+        new Drawing::Color(0.0, 1.0, 0.0, 0.5),
         shape_square_filled, 0.0,
         std::vector<Drawing::Point>{ 
             Drawing::Point(370+20, 280+20), Drawing::Point(450+20, 400+20) 
+        }
+    )); 
+
+    canvas.addDrawable(Drawing::Drawable(
+        new Drawing::Color(0.0, 0.0, 1.0, 1.0),
+        shape_square_filled, 0.0,
+        std::vector<Drawing::Point>{ 
+            Drawing::Point(370+40, 280+40), Drawing::Point(450+40, 400+40) 
         }
     )); 
 
