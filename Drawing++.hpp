@@ -2,11 +2,10 @@
 #include <png.h>
 #include <cassert>
 #include <cmath>
-#include <iostream>
-#include <memory>
 
 
 #define DEFAULT_DRAWING_SHAPE_FUNCS 1
+
 
 namespace Drawing{
 
@@ -20,6 +19,7 @@ namespace Drawing{
         }
         double r, g, b, a;
     };
+
 
     typedef struct Point { 
         Point(double x, double y){
@@ -48,12 +48,9 @@ namespace Drawing{
 
     struct Drawable;
 
-    // typedef std::unique_ptr<Drawing::Drawable> UniqueDrawable;
-    using UniqueDrawable = std::unique_ptr<Drawing::Drawable>&;
-    // using shape_fn_ptr = int(*)(std::unique_ptr<Drawing::Drawable>& drawable, png_uint_32 x, png_uint_32 y);
-    using shape_fn_ptr = int(*)(UniqueDrawable drawable, png_uint_32 x, png_uint_32 y);
+    using shape_fn_ptr = int(*)(Drawing::Drawable* drawable, png_uint_32 x, png_uint_32 y);
 
-    struct Drawable{    
+    struct Drawable{
         Drawable(void) {};
         shape_fn_ptr shape_fn = nullptr;
         std::vector<Point> points;
@@ -96,7 +93,13 @@ namespace Drawing{
                 int compressMethod = PNG_COMPRESSION_TYPE_DEFAULT,
                 int filterMethod = PNG_FILTER_TYPE_DEFAULT);
             ~Canvas();
-            
+
+            Canvas(Canvas const&) = default;
+            Canvas& operator=(Canvas rhs){
+                swap(*this, rhs);
+                return *this;
+            }
+
             void initImage(const png_uint_32 width, const png_uint_32 height, 
                 int bitDepth = 8, int colorType = PNG_COLOR_TYPE_RGBA,
                 int interlaceMethod = PNG_INTERLACE_NONE,
@@ -107,9 +110,8 @@ namespace Drawing{
                 Color bgColor = Color(1.0, 1.0, 1.0, 1.0)
             );
 
-            template<typename T>
-            void addDrawable(T drawable){
-                m_drawables.push_back(std::make_unique<T>(drawable));
+            void addDrawable(Drawable* drawable){
+                m_drawables.push_back(drawable);
             }
             void draw();
 
@@ -118,20 +120,28 @@ namespace Drawing{
             void bufferToFile(const char* filepath);
 
             std::size_t getDrawablesSize(void) const { return m_drawables.size(); }
-            std::unique_ptr<Drawing::Drawable>& getDrawable(const unsigned index) { return m_drawables.at(index); }
+            Drawing::Drawable* getDrawable(const unsigned index) { return m_drawables.at(index); }
 
         private:
-            std::vector<std::unique_ptr<Drawable>> m_drawables;
+            std::vector<Drawable*> m_drawables;
             png_structp m_pngPtr = nullptr;
             png_infop m_infoPtr = nullptr;
             png_bytep *m_rowBufferPtrs = nullptr;
+
+            friend void swap(Canvas& a, Canvas& b) {
+                using std::swap;
+                swap(a.m_drawables, b.m_drawables);
+                swap(a.m_pngPtr, b.m_pngPtr);
+                swap(a.m_infoPtr, b.m_infoPtr);
+                swap(a.m_rowBufferPtrs, b.m_rowBufferPtrs);
+            }
     };
 
 
 
 #if DEFAULT_DRAWING_SHAPE_FUNCS
 
-    static int shape_rect_filled(UniqueDrawable drawable, png_uint_32 x, png_uint_32 y){
+    static int shape_rect_filled(Drawing::Drawable* drawable, png_uint_32 x, png_uint_32 y){
         assert(drawable->points.size() >= 2);
         return x >= drawable->points[0].x && x <= drawable->points[1].x &&
                 y >= drawable->points[0].y && y <= drawable->points[1].y;
@@ -159,7 +169,7 @@ namespace Drawing{
     }
     //
 
-    static int shape_triangle_filled(UniqueDrawable drawable, png_uint_32 x, png_uint_32 y){
+    static int shape_triangle_filled(Drawing::Drawable* drawable, png_uint_32 x, png_uint_32 y){
         assert(drawable->points.size() >= 3);
         return _isPointInTriangle(Point(x, y), drawable->points[0], drawable->points[1], drawable->points[2]);
     }

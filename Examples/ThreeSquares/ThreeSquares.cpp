@@ -3,7 +3,7 @@
 #include "../../Drawing++.hpp" //include Drawing++ header file
 
 //user-defined shape function
-static int shape_square_filled(Drawing::UniqueDrawable drawable, png_uint_32 x, png_uint_32 y){
+static int shape_square_filled(Drawing::Drawable* drawable, png_uint_32 x, png_uint_32 y){
     assert(drawable->points.size() >= 2);
     
     return x >= drawable->points[0].x && x <= drawable->points[1].x &&
@@ -13,8 +13,8 @@ static int shape_square_filled(Drawing::UniqueDrawable drawable, png_uint_32 x, 
 
 int main(){
     Drawing::Canvas canvas(640, 480); //Create Drawing::Canvas 640x480 size
-    
-    canvas.addDrawable(Drawing::Figure(
+
+    canvas.addDrawable(new Drawing::Figure(
         Drawing::Color(1.0, 0.0, 0.0, 1.0),
         shape_square_filled,
         std::vector<Drawing::Point>{ 
@@ -22,15 +22,15 @@ int main(){
         }
     )); 
 
-    canvas.addDrawable(Drawing::Figure(
+    canvas.addDrawable(new Drawing::Figure(
         Drawing::Color(0.0, 1.0, 0.0, 0.5),
         shape_square_filled,
         std::vector<Drawing::Point>{ 
             Drawing::Point(370+20, 280+20), Drawing::Point(450+20, 400+20) 
         }
-    )); 
+    ));
 
-    canvas.addDrawable(Drawing::Figure(
+    canvas.addDrawable(new Drawing::Figure(
         Drawing::Color(0.0, 0.0, 1.0, 1.0),
         shape_square_filled,
         std::vector<Drawing::Point>{ 

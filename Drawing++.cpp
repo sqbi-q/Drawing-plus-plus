@@ -1,6 +1,4 @@
 #include "Drawing++.hpp"
-#include <cassert>
-#include <iostream>
 
 
 Drawing::ImageFile::ImageFile(const char* filename) {
@@ -10,6 +8,7 @@ Drawing::ImageFile::ImageFile(const char* filename) {
 Drawing::ImageFile::~ImageFile() {
     png_destroy_read_struct(&m_pngPtr, &m_infoPtr, NULL);
 }
+
 
 void Drawing::ImageFile::loadPNGFile(const char* filename) {
     FILE *fp = fopen(filename, "rb");
@@ -95,7 +94,6 @@ Drawing::Canvas::Canvas(png_uint_32 width, png_uint_32 height,
     initBuffer();
 }
 
-
 Drawing::Canvas::~Canvas(){
     png_uint_32 height = png_get_image_height(m_pngPtr, m_infoPtr);
     for(int y = 0; y < height; y++) {
@@ -147,6 +145,7 @@ void Drawing::Canvas::initBuffer(Color bgColor){
     }
 }
 
+
 static double mix(double x, double y, double a){
     return x*(1-a) + y*a;
 }
@@ -156,7 +155,8 @@ static double max(double x, double y){
     return x;
 }
 
-void drawPixel(png_bytep pixel, std::vector<std::unique_ptr<Drawing::Drawable>> &drawables, 
+// void drawPixel(png_bytep pixel, std::vector<std::unique_ptr<Drawing::Drawable>> &drawables, 
+void drawPixel(png_bytep pixel, std::vector<Drawing::Drawable*> drawables, 
     png_uint_32 x, png_uint_32 y, png_byte channels){
 
     double r = pixel[0];

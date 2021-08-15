@@ -1,12 +1,13 @@
 #include "../../Drawing++.hpp"
 #include <memory>
 #include <cmath>
+#include <cassert>
 
 static double step(double edge, double x){
     return !(x < edge);
 }
 
-static int mustache_shape(Drawing::UniqueDrawable drawable, png_uint_32 _x, png_uint_32 _y){
+static int mustache_shape(Drawing::Drawable* drawable, png_uint_32 _x, png_uint_32 _y){
     assert(drawable->points.size() >= 3);
 
     Drawing::Point res = drawable->points[0];
@@ -47,8 +48,8 @@ static int mustache_shape(Drawing::UniqueDrawable drawable, png_uint_32 _x, png_
 int main(){
     Drawing::Canvas canvas(512, 512);
     
-    canvas.addDrawable(Drawing::ImageFile("./Lenna_(test_image).png"));
-    canvas.addDrawable(Drawing::Figure(
+    canvas.addDrawable(new Drawing::ImageFile("./Lenna_(test_image).png"));
+    canvas.addDrawable(new Drawing::Figure(
         Drawing::Color(0.3, 0.1, 0.0, 1.0), mustache_shape,
         std::vector<Drawing::Point>{ 
             Drawing::Point(512, 512), Drawing::Point(0.25), 
