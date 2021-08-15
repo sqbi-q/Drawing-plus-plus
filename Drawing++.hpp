@@ -101,6 +101,8 @@ namespace Drawing{
             }
             void draw();
 
+            double compare(Canvas &canvasB);
+
             void bufferToFile(const char* filepath);
 
             std::size_t getDrawablesSize(void) const { return m_drawables.size(); }

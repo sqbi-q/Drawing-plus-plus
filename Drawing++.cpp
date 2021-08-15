@@ -207,6 +207,8 @@ void drawPixel(png_bytep pixel, std::vector<std::unique_ptr<Drawing::Drawable>> 
 
 void Drawing::Canvas::draw(){
     assert(m_rowBufferPtrs != NULL);
+    assert(m_pngPtr != NULL);
+    assert(m_infoPtr != NULL);
 
     png_uint_32 height = png_get_image_height(m_pngPtr, m_infoPtr);
     png_uint_32 width = png_get_image_width(m_pngPtr, m_infoPtr);
@@ -218,6 +220,39 @@ void Drawing::Canvas::draw(){
             drawPixel(pixel, m_drawables, x, y, channels);
         }
     }
+}
+
+double Drawing::Canvas::compare(Canvas &canvasB){
+    assert(m_rowBufferPtrs != NULL);
+    assert(m_pngPtr != NULL);
+    assert(m_infoPtr != NULL);
+
+    png_uint_32 height = png_get_image_height(m_pngPtr, m_infoPtr);
+    png_uint_32 width = png_get_image_width(m_pngPtr, m_infoPtr);
+    png_byte channels = png_get_channels(m_pngPtr, m_infoPtr);
+    Canvas *canvasA = this;
+
+    double sumSquareDiff = 0.0;
+    double pixelA_sumSquare = 0.0;
+    double pixelB_sumSquare = 0.0;
+
+    for (png_uint_32 y=0; y<height; y++){
+        for (png_uint_32 x=0; x<width; x++){
+            png_bytep pixelA = &canvasA->m_rowBufferPtrs[y][x*channels];
+            png_bytep pixelB = &canvasB.m_rowBufferPtrs[y][x*channels];
+            
+            double channelSumA = (double)pixelA[0]+(double)pixelA[1]+(double)pixelA[2]+(double)pixelA[3];
+            double channelSumB = (double)pixelB[0]+(double)pixelB[1]+(double)pixelB[2]+(double)pixelB[3];
+
+            double diff = channelSumA - channelSumB;
+            sumSquareDiff += diff*diff;
+
+            pixelA_sumSquare += channelSumA*channelSumA;
+            pixelB_sumSquare += channelSumB*channelSumB;
+        }
+    }
+
+    return sumSquareDiff/sqrt(pixelA_sumSquare*pixelB_sumSquare);
 }
 
 void Drawing::Canvas::bufferToFile(const char* filepath){
