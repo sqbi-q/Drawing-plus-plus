@@ -92,6 +92,7 @@ namespace Drawing{
 
     class Canvas{
         public:
+            Canvas(void) {};
             Canvas(png_uint_32 width, png_uint_32 height,
                 int bitDepth = 8, int colorType = PNG_COLOR_TYPE_RGBA,
                 int interlaceMethod = PNG_INTERLACE_NONE,
@@ -102,7 +103,7 @@ namespace Drawing{
             Canvas(Canvas const&) = default;
 
             /*
-                Unto thy, who is't shall command ye `Canvas(void) {}` default constructeth'r:
+                Unto thy, who is't shall command assign unto ye `Canvas(void) {}` default constructeth'r:
                 Doth not t, thee shall suff'r by `operator=` and swap function
             */
             // Canvas& operator=(Canvas rhs){
