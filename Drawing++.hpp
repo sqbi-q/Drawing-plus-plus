@@ -30,6 +30,18 @@ namespace Drawing{
             this->x = xy;
             this->y = xy;
         }
+        Point operator+(const Point &p) const {
+            return Point(p.x+x, p.y+y);
+        }
+        Point operator-(const Point &p) const {
+            return Point(p.x-x, p.y-y);
+        }
+        Point operator*(const Point &p) const {
+            return Point(p.x*x, p.y*y);
+        }
+        Point operator/(const Point &p) const {
+            return Point(p.x/x, p.y/y);
+        }
         double x, y; 
     } Point;
 
