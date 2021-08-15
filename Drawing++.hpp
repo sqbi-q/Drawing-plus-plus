@@ -2,87 +2,122 @@
 #include <png.h>
 #include <cassert>
 #include <cmath>
+#include <iostream>
+#include <memory>
 
 
 #define DEFAULT_DRAWING_SHAPE_FUNCS 1
 
-
 namespace Drawing{
 
     struct Color{
-        Color(double r, double g, double b, double a) {
-            red = r;
-            green = g;
-            blue = b;
-            alpha = a;
+        Color(void) {};
+        Color (double r, double g, double b, double a){
+            this->r = r;
+            this->g = g;
+            this->b = b;
+            this->a = a;
         }
-        
-        double red;
-        double green;
-        double blue;
-        double alpha;
+        double r, g, b, a;
     };
-
 
     typedef struct Point { 
         Point(double x, double y){
             this->x = x;
             this->y = y;
         }
-
+        Point(double xy){
+            this->x = xy;
+            this->y = xy;
+        }
         double x, y; 
     } Point;
 
 
-    class Drawable;
+    struct Drawable;
 
-    typedef int (*shape_fn_ptr)(const Drawable *drawable, double x, double y);
+    // typedef std::unique_ptr<Drawing::Drawable> UniqueDrawable;
+    using UniqueDrawable = std::unique_ptr<Drawing::Drawable>&;
+    // using shape_fn_ptr = int(*)(std::unique_ptr<Drawing::Drawable>& drawable, png_uint_32 x, png_uint_32 y);
+    using shape_fn_ptr = int(*)(UniqueDrawable drawable, png_uint_32 x, png_uint_32 y);
 
-    struct Drawable{
-        Drawable(void) {}
-        Drawable(Color *color, shape_fn_ptr shape_fn,
-            double lineWidth, std::vector<Point> points){
+    struct Drawable{    
+        Drawable(void) {};
+        shape_fn_ptr shape_fn = nullptr;
+        std::vector<Point> points;
+        virtual Color getPixel(png_uint_32 x, png_uint_32 y) { return Color(0, 0, 0, 0); }
+    };
+
+    struct Figure : Drawable {
+        Figure(void) {};
+        Figure(Color color, shape_fn_ptr shape_fn, std::vector<Point> points){
             this->color = color;
             this->shape_fn = shape_fn;
-            this->lineWidth = lineWidth;
             this->points = points;
         }
 
-        const struct Color *color;
-        shape_fn_ptr shape_fn;
-        double lineWidth; /* line width, 0 for 'filled' */
-        std::vector<Point> points;
+        Color color;
+        Color getPixel(png_uint_32 x, png_uint_32 y) { return color; }
     };
 
+    struct ImageFile : Drawable {
+        public:
+            ImageFile(void) {};
+            ImageFile(const char* filename);
+            ~ImageFile();
+
+            void loadPNGFile(const char* filename);
+            Color getPixel(png_uint_32 x, png_uint_32 y);
+
+        private:
+            png_structp m_pngPtr = nullptr;
+            png_infop m_infoPtr = nullptr;
+            png_bytep *m_rowBufferPtrs = nullptr;
+    };
 
     class Canvas{
         public:
             Canvas(void) {};
-            Canvas(png_uint_32 width, png_uint_32 height);
+            Canvas(png_uint_32 width, png_uint_32 height,
+                int bitDepth = 8, int colorType = PNG_COLOR_TYPE_RGBA,
+                int interlaceMethod = PNG_INTERLACE_NONE,
+                int compressMethod = PNG_COMPRESSION_TYPE_DEFAULT,
+                int filterMethod = PNG_FILTER_TYPE_DEFAULT);
             ~Canvas();
             
-            void initImage(const png_uint_32 width, const png_uint_32 height);
-            void initBuffer();
+            void initImage(const png_uint_32 width, const png_uint_32 height, 
+                int bitDepth = 8, int colorType = PNG_COLOR_TYPE_RGBA,
+                int interlaceMethod = PNG_INTERLACE_NONE,
+                int compressMethod = PNG_COMPRESSION_TYPE_DEFAULT,
+                int filterMethod = PNG_FILTER_TYPE_DEFAULT);
+            
+            void initBuffer(
+                Color bgColor = Color(1.0, 1.0, 1.0, 1.0)
+            );
 
-            void addDrawable(const Drawable &drawable);
+            template<typename T>
+            void addDrawable(T drawable){
+                m_drawables.push_back(std::make_unique<T>(drawable));
+            }
             void draw();
 
             void bufferToFile(const char* filepath);
 
             std::size_t getDrawablesSize(void) const { return m_drawables.size(); }
-            Drawable& getDrawable(const unsigned index) { return m_drawables.at(index); }
+            std::unique_ptr<Drawing::Drawable>& getDrawable(const unsigned index) { return m_drawables.at(index); }
 
         private:
-            std::vector<Drawable> m_drawables;
-            png_uint_16p m_buffer;
-            png_image m_image;
+            std::vector<std::unique_ptr<Drawable>> m_drawables;
+            png_structp m_pngPtr = nullptr;
+            png_infop m_infoPtr = nullptr;
+            png_bytep *m_rowBufferPtrs = nullptr;
     };
 
 
 
 #if DEFAULT_DRAWING_SHAPE_FUNCS
 
-    static int shape_rect_filled(const Drawing::Drawable *drawable, double x, double y){
+    static int shape_rect_filled(UniqueDrawable drawable, png_uint_32 x, png_uint_32 y){
         assert(drawable->points.size() >= 2);
         return x >= drawable->points[0].x && x <= drawable->points[1].x &&
                 y >= drawable->points[0].y && y <= drawable->points[1].y;
@@ -110,7 +145,7 @@ namespace Drawing{
     }
     //
 
-    static int shape_triangle_filled(const Drawing::Drawable *drawable, double x, double y){
+    static int shape_triangle_filled(UniqueDrawable drawable, png_uint_32 x, png_uint_32 y){
         assert(drawable->points.size() >= 3);
         return _isPointInTriangle(Point(x, y), drawable->points[0], drawable->points[1], drawable->points[2]);
     }
