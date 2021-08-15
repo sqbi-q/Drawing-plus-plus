@@ -5,70 +5,67 @@ Drawing::ImageFile::ImageFile(const char* filename) {
     loadPNGFile(filename);
 }
 
-Drawing::ImageFile::~ImageFile() {
-    png_destroy_read_struct(&m_pngPtr, &m_infoPtr, NULL);
-}
-
 
 void Drawing::ImageFile::loadPNGFile(const char* filename) {
     FILE *fp = fopen(filename, "rb");
     if (!fp) abort();
 
-    m_pngPtr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-    if(!m_pngPtr) abort();
+    png_structp pngPtr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if(!pngPtr) abort();
 
-    m_infoPtr = png_create_info_struct(m_pngPtr);
-    if(!m_infoPtr) abort();
+    png_infop infoPtr = png_create_info_struct(pngPtr);
+    if(!infoPtr) abort();
 
-    if(setjmp(png_jmpbuf(m_pngPtr))) abort();
+    if(setjmp(png_jmpbuf(pngPtr))) abort();
 
-    png_init_io(m_pngPtr, fp);
+    png_init_io(pngPtr, fp);
 
-    png_read_info(m_pngPtr, m_infoPtr);
+    png_read_info(pngPtr, infoPtr);
 
-    png_uint_32 width      = png_get_image_width(m_pngPtr, m_infoPtr);
-    png_uint_32 height     = png_get_image_height(m_pngPtr, m_infoPtr);
-    png_byte color_type = png_get_color_type(m_pngPtr, m_infoPtr);
-    png_byte bit_depth  = png_get_bit_depth(m_pngPtr, m_infoPtr);
+    png_uint_32 width      = png_get_image_width(pngPtr, infoPtr);
+    png_uint_32 height     = png_get_image_height(pngPtr, infoPtr);
+    png_byte color_type = png_get_color_type(pngPtr, infoPtr);
+    png_byte bit_depth  = png_get_bit_depth(pngPtr, infoPtr);
 
     // Read any color_type into 8bit depth, RGBA format.
     // See http://www.libpng.org/pub/png/libpng-manual.txt
 
     if(bit_depth == 16)
-        png_set_strip_16(m_pngPtr);
+        png_set_strip_16(pngPtr);
     
     if(color_type == PNG_COLOR_TYPE_PALETTE)
-        png_set_palette_to_rgb(m_pngPtr);
+        png_set_palette_to_rgb(pngPtr);
 
     // PNG_COLOR_TYPE_GRAY_ALPHA is always 8 or 16bit depth.
     if(color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8)
-        png_set_expand_gray_1_2_4_to_8(m_pngPtr);
+        png_set_expand_gray_1_2_4_to_8(pngPtr);
 
-    if(png_get_valid(m_pngPtr, m_infoPtr, PNG_INFO_tRNS))
-        png_set_tRNS_to_alpha(m_pngPtr);
+    if(png_get_valid(pngPtr, infoPtr, PNG_INFO_tRNS))
+        png_set_tRNS_to_alpha(pngPtr);
 
     if(color_type == PNG_COLOR_TYPE_RGB ||
         color_type == PNG_COLOR_TYPE_GRAY ||
         color_type == PNG_COLOR_TYPE_PALETTE)
-        png_set_filler(m_pngPtr, 0xFF, PNG_FILLER_AFTER);
+        png_set_filler(pngPtr, 0xFF, PNG_FILLER_AFTER);
 
     if(color_type == PNG_COLOR_TYPE_GRAY ||
         color_type == PNG_COLOR_TYPE_GRAY_ALPHA)
-        png_set_gray_to_rgb(m_pngPtr);
+        png_set_gray_to_rgb(pngPtr);
 
-    png_read_update_info(m_pngPtr, m_infoPtr);
-
+    png_read_update_info(pngPtr, infoPtr);
 
     if (m_rowBufferPtrs) abort();
 
     m_rowBufferPtrs = (png_bytep*)malloc(sizeof(png_bytep) * height);
     for(int y = 0; y < height; y++) {
-        m_rowBufferPtrs[y] = (png_byte*) malloc(png_get_rowbytes(m_pngPtr, m_infoPtr));
+        m_rowBufferPtrs[y] = (png_byte*) malloc(png_get_rowbytes(pngPtr, infoPtr));
     }
 
-    png_read_image(m_pngPtr, m_rowBufferPtrs);
+    png_read_image(pngPtr, m_rowBufferPtrs);
 
     fclose(fp);
+
+    png_destroy_read_struct(&pngPtr, &infoPtr, NULL);
 }
 
 Drawing::Color Drawing::ImageFile::getPixel(png_uint_32 x, png_uint_32 y){    
@@ -106,6 +103,8 @@ Drawing::Canvas::~Canvas(){
 
 void Drawing::Canvas::initImage(png_uint_32 width, png_uint_32 height,
     int bitDepth, int colorType, int interlaceMethod, int compressMethod, int filterMethod){
+
+    png_destroy_write_struct(&m_pngPtr, &m_infoPtr);
 
     m_pngPtr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (!m_pngPtr) abort();
@@ -206,9 +205,9 @@ void drawPixel(png_bytep pixel, std::vector<Drawing::Drawable*> drawables,
 }
 
 void Drawing::Canvas::draw(){
-    assert(m_rowBufferPtrs != NULL);
-    assert(m_pngPtr != NULL);
-    assert(m_infoPtr != NULL);
+    assert(m_rowBufferPtrs != nullptr);
+    assert(m_pngPtr != nullptr);
+    assert(m_infoPtr != nullptr);
 
     png_uint_32 height = png_get_image_height(m_pngPtr, m_infoPtr);
     png_uint_32 width = png_get_image_width(m_pngPtr, m_infoPtr);

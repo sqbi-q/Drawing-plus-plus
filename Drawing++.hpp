@@ -21,6 +21,7 @@ namespace Drawing{
     };
 
 
+
     typedef struct Point { 
         Point(double x, double y){
             this->x = x;
@@ -46,9 +47,11 @@ namespace Drawing{
     } Point;
 
 
-    struct Drawable;
 
+    struct Drawable;
     using shape_fn_ptr = int(*)(Drawing::Drawable* drawable, png_uint_32 x, png_uint_32 y);
+
+
 
     struct Drawable{
         Drawable(void) {};
@@ -56,6 +59,8 @@ namespace Drawing{
         std::vector<Point> points;
         virtual Color getPixel(png_uint_32 x, png_uint_32 y) { return Color(0, 0, 0, 0); }
     };
+
+
 
     struct Figure : Drawable {
         Figure(void) {};
@@ -69,24 +74,24 @@ namespace Drawing{
         Color getPixel(png_uint_32 x, png_uint_32 y) { return color; }
     };
 
+
+
     struct ImageFile : Drawable {
         public:
             ImageFile(void) {};
             ImageFile(const char* filename);
-            ~ImageFile();
 
             void loadPNGFile(const char* filename);
             Color getPixel(png_uint_32 x, png_uint_32 y);
-
+                    
         private:
-            png_structp m_pngPtr = nullptr;
-            png_infop m_infoPtr = nullptr;
             png_bytep *m_rowBufferPtrs = nullptr;
     };
 
+
+
     class Canvas{
         public:
-            Canvas(void) {};
             Canvas(png_uint_32 width, png_uint_32 height,
                 int bitDepth = 8, int colorType = PNG_COLOR_TYPE_RGBA,
                 int interlaceMethod = PNG_INTERLACE_NONE,
@@ -95,10 +100,27 @@ namespace Drawing{
             ~Canvas();
 
             Canvas(Canvas const&) = default;
-            Canvas& operator=(Canvas rhs){
-                swap(*this, rhs);
-                return *this;
-            }
+
+            /*
+                Unto thy, who is't shall command ye `Canvas(void) {}` default constructeth'r:
+                Doth not t, thee shall suff'r by `operator=` and swap function
+            */
+            // Canvas& operator=(Canvas rhs){
+            //     this = Canvas();
+            //     swap(*this, rhs);
+            //     return *this;
+            // }
+
+            // friend void swap(Canvas& a, Canvas& b) {
+            //     using std::swap;
+
+            //     this = Canvas();
+
+            //     a.m_drawables.swap(b.m_drawables);
+            //     swap(a.m_pngPtr, b.m_pngPtr);
+            //     swap(a.m_infoPtr, b.m_infoPtr);
+            //     swap(a.m_rowBufferPtrs, b.m_rowBufferPtrs);
+            // }
 
             void initImage(const png_uint_32 width, const png_uint_32 height, 
                 int bitDepth = 8, int colorType = PNG_COLOR_TYPE_RGBA,
@@ -110,7 +132,7 @@ namespace Drawing{
                 Color bgColor = Color(1.0, 1.0, 1.0, 1.0)
             );
 
-            void addDrawable(Drawable* drawable){
+            void addDrawable(Drawable *const &drawable){
                 m_drawables.push_back(drawable);
             }
             void draw();
@@ -128,14 +150,6 @@ namespace Drawing{
             png_structp m_pngPtr = nullptr;
             png_infop m_infoPtr = nullptr;
             png_bytep *m_rowBufferPtrs = nullptr;
-
-            friend void swap(Canvas& a, Canvas& b) {
-                using std::swap;
-                swap(a.m_drawables, b.m_drawables);
-                swap(a.m_pngPtr, b.m_pngPtr);
-                swap(a.m_infoPtr, b.m_infoPtr);
-                swap(a.m_rowBufferPtrs, b.m_rowBufferPtrs);
-            }
     };
 
 
