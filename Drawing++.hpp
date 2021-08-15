@@ -121,6 +121,7 @@ namespace Drawing{
 
             std::size_t getDrawablesSize(void) const { return m_drawables.size(); }
             Drawing::Drawable* getDrawable(const unsigned index) { return m_drawables.at(index); }
+            void setDrawable(Drawable* drawable, const unsigned index) { m_drawables[index] = drawable; }
 
         private:
             std::vector<Drawable*> m_drawables;
