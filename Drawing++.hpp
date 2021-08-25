@@ -2,6 +2,7 @@
 #include <png.h>
 #include <cassert>
 #include <cmath>
+#include <iostream>
 
 
 #define DEFAULT_DRAWING_SHAPE_FUNCS 1
@@ -93,6 +94,7 @@ namespace Drawing{
     class Canvas{
         public:
             Canvas(void) {};
+            // Canvas(const Canvas& rhs);
             Canvas(png_uint_32 width, png_uint_32 height,
                 int bitDepth = 8, int colorType = PNG_COLOR_TYPE_RGBA,
                 int interlaceMethod = PNG_INTERLACE_NONE,
@@ -100,34 +102,60 @@ namespace Drawing{
                 int filterMethod = PNG_FILTER_TYPE_DEFAULT);
             ~Canvas();
 
-            Canvas(Canvas const&) = default;
-
             /*
                 Unto thy, who is't shall command assign unto ye `Canvas(void) {}` default constructeth'r:
                 Doth not t, thee shall suff'r by `operator=` and swap function
             */
+
             // Canvas& operator=(Canvas rhs){
-            //     this = Canvas();
-            //     swap(*this, rhs);
+            //     std::cout << "TEST" << std::endl;
+            //     assert(rhs.m_pngPtr != nullptr);
+            //     assert(rhs.m_infoPtr != nullptr);
+            //     assert(rhs.m_rowBufferPtrs != nullptr);
+
+            //     png_uint_32 width = png_get_image_width(rhs.m_pngPtr, rhs.m_infoPtr);
+            //     png_uint_32 height = png_get_image_height(rhs.m_pngPtr, rhs.m_infoPtr);
+
+            //     initImage(rhs.m_pngPtr, rhs.m_infoPtr);
+                
+            //     initBuffer();
+            //     *m_rowBufferPtrs = *rhs.m_rowBufferPtrs;
+            //     for(int y = 0; y < height; y++) {
+            //         *(m_rowBufferPtrs[y]) = *(rhs.m_rowBufferPtrs[y]);
+            //     }
+
             //     return *this;
             // }
 
-            // friend void swap(Canvas& a, Canvas& b) {
-            //     using std::swap;
+            // Canvas& operator=(Canvas rhs){
+            //     assert(rhs.m_pngPtr != nullptr);
+            //     assert(rhs.m_infoPtr != nullptr);
+            //     assert(rhs.m_rowBufferPtrs != nullptr);
 
-            //     this = Canvas();
+            //     png_uint_32 width = png_get_image_width(rhs.m_pngPtr, rhs.m_infoPtr);
+            //     png_uint_32 height = png_get_image_height(rhs.m_pngPtr, rhs.m_infoPtr);
 
-            //     a.m_drawables.swap(b.m_drawables);
-            //     swap(a.m_pngPtr, b.m_pngPtr);
-            //     swap(a.m_infoPtr, b.m_infoPtr);
-            //     swap(a.m_rowBufferPtrs, b.m_rowBufferPtrs);
+            //     initImage(rhs.m_pngPtr, rhs.m_infoPtr);
+                
+            //     initBuffer();
+            //     *m_rowBufferPtrs = *rhs.m_rowBufferPtrs;
+            //     for(int y = 0; y < height; y++) {
+            //         *(m_rowBufferPtrs[y]) = *(rhs.m_rowBufferPtrs[y]);
+            //     }
+
+            //     return *this;
             // }
-
+            Canvas& operator=(Canvas rhs);
+            
+            //init new image [width x height]
             void initImage(const png_uint_32 width, const png_uint_32 height, 
                 int bitDepth = 8, int colorType = PNG_COLOR_TYPE_RGBA,
                 int interlaceMethod = PNG_INTERLACE_NONE,
                 int compressMethod = PNG_COMPRESSION_TYPE_DEFAULT,
                 int filterMethod = PNG_FILTER_TYPE_DEFAULT);
+            
+            //init new image and assign values from pngPtr and infoPtr
+            void initImage(const png_structp &pngPtr, const png_infop &infoPtr);
             
             void initBuffer(
                 Color bgColor = Color(1.0, 1.0, 1.0, 1.0)

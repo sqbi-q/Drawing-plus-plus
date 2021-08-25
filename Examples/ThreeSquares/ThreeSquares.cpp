@@ -40,6 +40,6 @@ int main(){
 
     canvas.draw(); //draw every drawable in canvas to buffer
     canvas.bufferToFile("./output.png"); //output buffer to file "./output.png"
-    
+
     return 0;
 }

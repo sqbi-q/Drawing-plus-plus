@@ -8,7 +8,7 @@ int main(){
     canvasA.draw();
 
     Drawing::Canvas canvasB(512, 512);
-    canvasB.addDrawable(new Drawing::ImageFile("./Lenna_(test_image).png"));
+    canvasB.addDrawable(new Drawing::ImageFile("./mustachegirl.png"));
     canvasB.draw();
 
     double cmp = canvasA.compare(canvasB);
