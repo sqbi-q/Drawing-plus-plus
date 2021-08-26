@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <cassert>
 #include <cmath>
+#include <algorithm>
 
 #define MINMACRO(a, b) ( (a)<(b) ? (a) : (b) )
 
@@ -33,6 +34,12 @@ namespace Drawing {
         double y(void) const { return this->at(1); }
         double z(void) const { return this->at(2); }
         double w(void) const { return this->at(3); }
+        Point& operator*(const Point &rhs) {
+            Point product = std::vector<double>(this->size());
+            std::transform(this->begin(), this->end(), rhs.begin(), 
+                product.begin(), std::multiplies<double>());
+            return product;
+        }
     };
 
 
@@ -138,12 +145,11 @@ namespace Drawing {
         return x >= drawable->points[0].x() && x <= drawable->points[1].x() &&
                 y >= drawable->points[0].y() && y <= drawable->points[1].y();
     }
-/*
 
     //https://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle
     //Code by Kornel Kisielewicz
     static float _sign(Point p1, Point p2, Point p3){
-        return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
+        return (p1.x() - p3.x()) * (p2.y() - p3.y()) - (p2.x() - p3.x()) * (p1.y() - p3.y());
     }
 
     static bool _isPointInTriangle (Point pt, Point v1, Point v2, Point v3){
@@ -163,8 +169,8 @@ namespace Drawing {
 
     static int shape_triangle_filled(Drawing::Drawable* drawable, png_uint_32 x, png_uint_32 y){
         assert(drawable->points.size() >= 3);
-        return _isPointInTriangle(Point(x, y), drawable->points[0], drawable->points[1], drawable->points[2]);
+        return _isPointInTriangle(Point({(double)x, (double)y}), 
+            drawable->points[0], drawable->points[1], drawable->points[2]);
     }
-*/
 #endif
 }
