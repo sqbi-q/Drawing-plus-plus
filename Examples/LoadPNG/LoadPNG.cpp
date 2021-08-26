@@ -14,14 +14,14 @@ static int mustache_shape(Drawing::Drawable* drawable, png_uint_32 _x, png_uint_
     Drawing::Point zoom = drawable->points[1];
     Drawing::Point pos = drawable->points[2];
 
-    double x = (_x / (double) res.x);
-    double y = (_y / (double) res.y);
+    double x = (_x / (double) res.x());
+    double y = (_y / (double) res.y());
 
-    x /= zoom.x;
-    y /= zoom.y;
+    x /= zoom[0];
+    y /= zoom[0];
 
-    x += 0.5 - pos.x/zoom.x;
-    y -= pos.y/zoom.y;
+    x += 0.5 - pos.x()/zoom[0];
+    y -= pos.y()/zoom[0];
 
     if (x < 0) return 0;
     if (x > 1.0) return 0;
@@ -48,12 +48,12 @@ static int mustache_shape(Drawing::Drawable* drawable, png_uint_32 _x, png_uint_
 int main(){
     Drawing::Canvas canvas(512, 512);
     
-    canvas.addDrawable(new Drawing::ImageFile("./Lenna_(test_image).png"));
-    canvas.addDrawable(new Drawing::Figure(
+    canvas.addDrawable(Drawing::ImageFile("./Lenna_(test_image).png"));
+    canvas.addDrawable(Drawing::Figure(
         Drawing::Color(0.3, 0.1, 0.0, 1.0), mustache_shape,
         std::vector<Drawing::Point>{ 
-            Drawing::Point(512, 512), Drawing::Point(0.25), 
-            Drawing::Point(0.6, 0.65) 
+            Drawing::Point({512, 512}), Drawing::Point({0.25}), 
+            Drawing::Point({0.6, 0.65}) 
         }
     ));
     canvas.draw();

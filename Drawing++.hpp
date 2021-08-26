@@ -1,89 +1,74 @@
 #include <vector>
 #include <png.h>
+#include <memory>
+#include <stdlib.h>
 #include <cassert>
 #include <cmath>
-#include <iostream>
+
+#define MINMACRO(a, b) ( (a)<(b) ? (a) : (b) )
 
 
 #define DEFAULT_DRAWING_SHAPE_FUNCS 1
 
 
-namespace Drawing{
-
+namespace Drawing {
     struct Color{
-        Color(void) {};
+        Color (void) {}
         Color (double r, double g, double b, double a){
-            this->r = r;
-            this->g = g;
-            this->b = b;
-            this->a = a;
+            this->r = MINMACRO(r, 1);
+            this->g = MINMACRO(g, 1);
+            this->b = MINMACRO(b, 1);
+            this->a = MINMACRO(a, 1);
         }
         double r, g, b, a;
     };
 
+    class Drawable;
+    using shape_fn_ptr = int(*)(Drawable* drawable, unsigned x, unsigned y);
+
+    //behold true beauty!!! 
+    struct Point : std::vector<double> {
+        Point(std::vector<double> coords) : std::vector<double>(coords) {}
+        double x(void) const { return this->at(0); }
+        double y(void) const { return this->at(1); }
+        double z(void) const { return this->at(2); }
+        double w(void) const { return this->at(3); }
+    };
 
 
-    typedef struct Point { 
-        Point(double x, double y){
-            this->x = x;
-            this->y = y;
-        }
-        Point(double xy){
-            this->x = xy;
-            this->y = xy;
-        }
-        Point operator+(const Point &p) const {
-            return Point(p.x+x, p.y+y);
-        }
-        Point operator-(const Point &p) const {
-            return Point(p.x-x, p.y-y);
-        }
-        Point operator*(const Point &p) const {
-            return Point(p.x*x, p.y*y);
-        }
-        Point operator/(const Point &p) const {
-            return Point(p.x/x, p.y/y);
-        }
-        double x, y; 
-    } Point;
-
-
-
-    struct Drawable;
-    using shape_fn_ptr = int(*)(Drawing::Drawable* drawable, png_uint_32 x, png_uint_32 y);
-
-
-
-    struct Drawable{
-        Drawable(void) {};
-        shape_fn_ptr shape_fn = nullptr;
-        std::vector<Point> points;
-        virtual Color getPixel(png_uint_32 x, png_uint_32 y) { return Color(0, 0, 0, 0); }
+    class Drawable {
+        public:
+            virtual Color getPixel(unsigned x, unsigned y) = 0;
+            virtual shape_fn_ptr getShapeFn(void) = 0;
+            std::vector<Point> points;
     };
 
 
 
-    struct Figure : Drawable {
-        Figure(void) {};
-        Figure(Color color, shape_fn_ptr shape_fn, std::vector<Point> points){
-            this->color = color;
-            this->shape_fn = shape_fn;
-            this->points = points;
-        }
+    class Figure : public Drawable {
+        public:
+            Figure (void) {};
+            Figure (Color bgColor, shape_fn_ptr shape_fn, 
+                std::vector<Point> points);
+            
+            Color getPixel(unsigned x, unsigned y) { return m_bgColor; }
+            shape_fn_ptr getShapeFn(void) { return m_shape_fn; }
 
-        Color color;
-        Color getPixel(png_uint_32 x, png_uint_32 y) { return color; }
+        private:
+            Color m_bgColor;
+            shape_fn_ptr m_shape_fn;
     };
 
 
-
-    struct ImageFile : Drawable {
+    static int wholeShape(Drawable* drawable, unsigned x, unsigned y) { return 1; }
+    class ImageFile : public Drawable {
         public:
             ImageFile(void) {};
             ImageFile(const char* filename);
 
             void loadPNGFile(const char* filename);
             Color getPixel(png_uint_32 x, png_uint_32 y);
+            shape_fn_ptr getShapeFn(void) { return wholeShape; }
                     
         private:
             png_bytep *m_rowBufferPtrs = nullptr;
@@ -91,10 +76,9 @@ namespace Drawing{
 
 
 
-    class Canvas{
+    class Canvas {
         public:
             Canvas(void) {};
-            // Canvas(const Canvas& rhs);
             Canvas(png_uint_32 width, png_uint_32 height,
                 int bitDepth = 8, int colorType = PNG_COLOR_TYPE_RGBA,
                 int interlaceMethod = PNG_INTERLACE_NONE,
@@ -102,51 +86,8 @@ namespace Drawing{
                 int filterMethod = PNG_FILTER_TYPE_DEFAULT);
             ~Canvas();
 
-            /*
-                Unto thy, who is't shall command assign unto ye `Canvas(void) {}` default constructeth'r:
-                Doth not t, thee shall suff'r by `operator=` and swap function
-            */
-
-            // Canvas& operator=(Canvas rhs){
-            //     std::cout << "TEST" << std::endl;
-            //     assert(rhs.m_pngPtr != nullptr);
-            //     assert(rhs.m_infoPtr != nullptr);
-            //     assert(rhs.m_rowBufferPtrs != nullptr);
-
-            //     png_uint_32 width = png_get_image_width(rhs.m_pngPtr, rhs.m_infoPtr);
-            //     png_uint_32 height = png_get_image_height(rhs.m_pngPtr, rhs.m_infoPtr);
-
-            //     initImage(rhs.m_pngPtr, rhs.m_infoPtr);
-                
-            //     initBuffer();
-            //     *m_rowBufferPtrs = *rhs.m_rowBufferPtrs;
-            //     for(int y = 0; y < height; y++) {
-            //         *(m_rowBufferPtrs[y]) = *(rhs.m_rowBufferPtrs[y]);
-            //     }
-
-            //     return *this;
-            // }
-
-            // Canvas& operator=(Canvas rhs){
-            //     assert(rhs.m_pngPtr != nullptr);
-            //     assert(rhs.m_infoPtr != nullptr);
-            //     assert(rhs.m_rowBufferPtrs != nullptr);
-
-            //     png_uint_32 width = png_get_image_width(rhs.m_pngPtr, rhs.m_infoPtr);
-            //     png_uint_32 height = png_get_image_height(rhs.m_pngPtr, rhs.m_infoPtr);
-
-            //     initImage(rhs.m_pngPtr, rhs.m_infoPtr);
-                
-            //     initBuffer();
-            //     *m_rowBufferPtrs = *rhs.m_rowBufferPtrs;
-            //     for(int y = 0; y < height; y++) {
-            //         *(m_rowBufferPtrs[y]) = *(rhs.m_rowBufferPtrs[y]);
-            //     }
-
-            //     return *this;
-            // }
             Canvas& operator=(Canvas rhs);
-            
+
             //init new image [width x height]
             void initImage(const png_uint_32 width, const png_uint_32 height, 
                 int bitDepth = 8, int colorType = PNG_COLOR_TYPE_RGBA,
@@ -156,26 +97,26 @@ namespace Drawing{
             
             //init new image and assign values from pngPtr and infoPtr
             void initImage(const png_structp &pngPtr, const png_infop &infoPtr);
-            
+
             void initBuffer(
                 Color bgColor = Color(1.0, 1.0, 1.0, 1.0)
             );
 
-            void addDrawable(Drawable *const &drawable){
-                m_drawables.push_back(drawable);
+            template<typename T>
+            void addDrawable(const T& drawable){
+                m_drawables.push_back(
+                    std::dynamic_pointer_cast<Drawable>(
+                        std::make_shared<T>(drawable)
+                ));
             }
             void draw();
-
+        
             double compare(Canvas &canvasB);
 
             void bufferToFile(const char* filepath);
 
-            std::size_t getDrawablesSize(void) const { return m_drawables.size(); }
-            Drawing::Drawable* getDrawable(const unsigned index) { return m_drawables.at(index); }
-            void setDrawable(Drawable* drawable, const unsigned index) { m_drawables[index] = drawable; }
-
         private:
-            std::vector<Drawable*> m_drawables;
+            std::vector<std::shared_ptr<Drawable>> m_drawables;
             png_structp m_pngPtr = nullptr;
             png_infop m_infoPtr = nullptr;
             png_bytep *m_rowBufferPtrs = nullptr;
@@ -183,14 +124,21 @@ namespace Drawing{
 
 
 
+
+
+
+
+
+
+
 #if DEFAULT_DRAWING_SHAPE_FUNCS
 
-    static int shape_rect_filled(Drawing::Drawable* drawable, png_uint_32 x, png_uint_32 y){
+    static int shape_rect_filled(Drawable* drawable, png_uint_32 x, png_uint_32 y){
         assert(drawable->points.size() >= 2);
-        return x >= drawable->points[0].x && x <= drawable->points[1].x &&
-                y >= drawable->points[0].y && y <= drawable->points[1].y;
+        return x >= drawable->points[0].x() && x <= drawable->points[1].x() &&
+                y >= drawable->points[0].y() && y <= drawable->points[1].y();
     }
-
+/*
 
     //https://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle
     //Code by Kornel Kisielewicz
@@ -217,6 +165,6 @@ namespace Drawing{
         assert(drawable->points.size() >= 3);
         return _isPointInTriangle(Point(x, y), drawable->points[0], drawable->points[1], drawable->points[2]);
     }
-
+*/
 #endif
 }

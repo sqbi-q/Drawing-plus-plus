@@ -1,5 +1,14 @@
 #include "Drawing++.hpp"
-#include <iostream>
+
+
+Drawing::Figure::Figure(Color bgColor,
+    shape_fn_ptr shape_fn, std::vector<Point> points){
+    
+    m_shape_fn = shape_fn;
+    m_bgColor = bgColor;
+    this->points = points;
+}
+
 
 
 Drawing::ImageFile::ImageFile(const char* filename) {
@@ -92,6 +101,16 @@ Drawing::Canvas::Canvas(png_uint_32 width, png_uint_32 height,
     initBuffer();
 }
 
+Drawing::Canvas::~Canvas(){
+    png_uint_32 height = png_get_image_height(m_pngPtr, m_infoPtr);
+    for(int y = 0; y < height; y++) {
+        free(m_rowBufferPtrs[y]);
+    }
+    free(m_rowBufferPtrs);
+    png_destroy_write_struct(&m_pngPtr, &m_infoPtr);
+}
+
+
 Drawing::Canvas& Drawing::Canvas::operator=(Canvas rhs){
     assert(rhs.m_pngPtr != nullptr);
     assert(rhs.m_infoPtr != nullptr);
@@ -101,9 +120,8 @@ Drawing::Canvas& Drawing::Canvas::operator=(Canvas rhs){
     png_uint_32 height = png_get_image_height(rhs.m_pngPtr, rhs.m_infoPtr);
 
     initImage(rhs.m_pngPtr, rhs.m_infoPtr);
-    
     initBuffer();
-    // *m_rowBufferPtrs = *rhs.m_rowBufferPtrs;
+
     for(int y = 0; y < height; y++) {
         *(m_rowBufferPtrs[y]) = *(rhs.m_rowBufferPtrs[y]);
     }
@@ -111,14 +129,6 @@ Drawing::Canvas& Drawing::Canvas::operator=(Canvas rhs){
     return *this;
 }
 
-Drawing::Canvas::~Canvas(){
-    png_uint_32 height = png_get_image_height(m_pngPtr, m_infoPtr);
-    for(int y = 0; y < height; y++) {
-        free(m_rowBufferPtrs[y]);
-    }
-    free(m_rowBufferPtrs);
-    png_destroy_write_struct(&m_pngPtr, &m_infoPtr);
-}
 
 
 void createPngStructs(png_structp *pngPtr, png_infop *infoPtr){
@@ -131,27 +141,11 @@ void createPngStructs(png_structp *pngPtr, png_infop *infoPtr){
     if (setjmp(png_jmpbuf(*pngPtr))) abort();
 }
 
-void setImageIDHR(png_structp pngPtr, png_infop infoPtr, 
-    png_uint_32 width, png_uint_32 height, int bitDepth, int colorType, 
-    int interlaceMethod, int compressMethod, int filterMethod){
-    
-    png_set_IHDR(
-        pngPtr,
-        infoPtr,
-        width, height,
-        bitDepth,
-        colorType,
-        interlaceMethod,
-        compressMethod,
-        filterMethod
-    );
-}
-
 void Drawing::Canvas::initImage(png_uint_32 width, png_uint_32 height,
     int bitDepth, int colorType, int interlaceMethod, int compressMethod, int filterMethod){
 
     createPngStructs(&m_pngPtr, &m_infoPtr);
-    setImageIDHR(
+    png_set_IHDR(
         m_pngPtr, m_infoPtr, width, height,
         bitDepth, colorType, interlaceMethod,
         compressMethod, filterMethod
@@ -161,7 +155,7 @@ void Drawing::Canvas::initImage(png_uint_32 width, png_uint_32 height,
 void Drawing::Canvas::initImage(const png_structp &pngPtr, const png_infop &infoPtr){
 
     createPngStructs(&m_pngPtr, &m_infoPtr);
-    setImageIDHR(
+    png_set_IHDR(
         m_pngPtr, m_infoPtr,
         png_get_image_width(pngPtr, infoPtr),
         png_get_image_height(pngPtr, infoPtr),
@@ -193,8 +187,6 @@ void Drawing::Canvas::initBuffer(Color bgColor){
 }
 
 
-
-
 static double mix(double x, double y, double a){
     return x*(1-a) + y*a;
 }
@@ -204,7 +196,7 @@ static double max(double x, double y){
     return x;
 }
 
-void drawPixel(png_bytep pixel, std::vector<Drawing::Drawable*> drawables, 
+void drawPixel(png_bytep pixel, std::vector<std::shared_ptr<Drawing::Drawable>> drawables, 
     png_uint_32 x, png_uint_32 y, png_byte channels){
 
     double r = pixel[0];
@@ -214,9 +206,12 @@ void drawPixel(png_bytep pixel, std::vector<Drawing::Drawable*> drawables,
 
 
     for (auto& drawable : drawables){
-        const int shape = (drawable->shape_fn != nullptr) ? 
-            drawable->shape_fn(drawable, x, y) : 1;
-
+        // const int shape = (drawable->shape_fn != nullptr) ? 
+            // drawable->shape_fn(drawable, x, y) : 1;
+        
+        Drawing::shape_fn_ptr shape_fn = drawable->getShapeFn();
+        const int shape = shape_fn(drawable.get(), x, y);
+        
         Drawing::Color color = drawable->getPixel(x*channels, y);
 
         a = max(a, color.a*shape);
