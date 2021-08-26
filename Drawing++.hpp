@@ -34,7 +34,7 @@ namespace Drawing {
         double y(void) const { return this->at(1); }
         double z(void) const { return this->at(2); }
         double w(void) const { return this->at(3); }
-        Point& operator*(const Point &rhs) {
+        Point operator*(const Point &rhs) {
             Point product = std::vector<double>(this->size());
             std::transform(this->begin(), this->end(), rhs.begin(), 
                 product.begin(), std::multiplies<double>());
@@ -109,12 +109,13 @@ namespace Drawing {
                 Color bgColor = Color(1.0, 1.0, 1.0, 1.0)
             );
 
-            template<typename T>
+            //T Drawable to K (default T) shared ptr
+            template<typename T, typename K = T>
             void addDrawable(const T& drawable){
                 m_drawables.push_back(
-                    std::dynamic_pointer_cast<Drawable>(
-                        std::make_shared<T>(drawable)
-                ));
+                    std::static_pointer_cast<Drawable>(
+                        std::make_shared<K>(drawable))
+                );
             }
             void draw();
         
@@ -124,12 +125,14 @@ namespace Drawing {
 
             std::size_t getDrawablesSize(void) const { return m_drawables.size(); }
             Drawing::Drawable* getDrawable(const unsigned index) { return m_drawables[index].get(); }
-            template<typename T>
-            void setDrawable(const T& drawable, const unsigned index) { 
+
+            //T Drawable to K (default T) shared ptr
+            template<typename T, typename K = T>
+            void setDrawable(const T& drawable, const unsigned index) {
                 m_drawables[index] = (
-                    std::dynamic_pointer_cast<Drawable>(
-                        std::make_shared<T>(drawable)
-                ));
+                    std::static_pointer_cast<Drawable>(
+                        std::make_shared<K>(drawable))
+                );
             }
 
         private:
