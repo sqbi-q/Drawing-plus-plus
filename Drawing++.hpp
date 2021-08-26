@@ -122,6 +122,16 @@ namespace Drawing {
 
             void bufferToFile(const char* filepath);
 
+            std::size_t getDrawablesSize(void) const { return m_drawables.size(); }
+            Drawing::Drawable* getDrawable(const unsigned index) { return m_drawables[index].get(); }
+            template<typename T>
+            void setDrawable(const T& drawable, const unsigned index) { 
+                m_drawables[index] = (
+                    std::dynamic_pointer_cast<Drawable>(
+                        std::make_shared<T>(drawable)
+                ));
+            }
+
         private:
             std::vector<std::shared_ptr<Drawable>> m_drawables;
             png_structp m_pngPtr = nullptr;
