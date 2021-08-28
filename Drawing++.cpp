@@ -242,11 +242,19 @@ void Drawing::Canvas::draw(){
     png_uint_32 width = png_get_image_width(m_pngPtr, m_infoPtr);
     png_byte channels = png_get_channels(m_pngPtr, m_infoPtr);
 
-    for (png_uint_32 y=0; y<height; y++){
-        for (png_uint_32 x=0; x<width; x++){
-            png_bytep pixel = &m_rowBufferPtrs[y][x*channels];
-            drawPixel(pixel, m_drawables, x, y, channels);
-        }
+    // for (png_uint_32 y=0; y<height; y++){
+    //     for (png_uint_32 x=0; x<width; x++){
+    //         png_bytep pixel = &m_rowBufferPtrs[y][x*channels];
+    //         drawPixel(pixel, m_drawables, x, y, channels);
+    //     }
+    // }
+    png_uint_32 x = 0;
+    png_uint_32 y = 0;
+    for (png_uint_32 n=0; n<width*height; n++){
+        x = n % width;
+        y = n / width;
+        png_bytep pixel = &m_rowBufferPtrs[y][x*channels];
+        drawPixel(pixel, m_drawables, x, y, channels);
     }
 }
 
