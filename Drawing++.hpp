@@ -117,6 +117,9 @@ namespace Drawing {
                         std::make_shared<K>(drawable))
                 );
             }
+            void addDrawable(std::shared_ptr<Drawable> drawable){
+                m_drawables.push_back(drawable);
+            }
             void draw();
         
             double compare(Canvas &canvasB);
