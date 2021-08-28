@@ -124,7 +124,11 @@ namespace Drawing {
             void bufferToFile(const char* filepath);
 
             std::size_t getDrawablesSize(void) const { return m_drawables.size(); }
-            Drawing::Drawable* getDrawable(const unsigned index) { return m_drawables[index].get(); }
+            // Drawing::Drawable* getDrawable(const unsigned index) { return m_drawables[index].get(); }
+
+            std::shared_ptr<Drawable> getDrawable(const unsigned index) { 
+                return m_drawables[index];
+            }
 
             //T Drawable to K (default T) shared ptr
             template<typename T, typename K = T>
