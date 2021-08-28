@@ -86,6 +86,7 @@ namespace Drawing {
     class Canvas {
         public:
             Canvas(void) {};
+            Canvas(const Canvas& canvas);
             Canvas(png_uint_32 width, png_uint_32 height,
                 int bitDepth = 8, int colorType = PNG_COLOR_TYPE_RGBA,
                 int interlaceMethod = PNG_INTERLACE_NONE,
@@ -147,6 +148,7 @@ namespace Drawing {
             png_structp m_pngPtr = nullptr;
             png_infop m_infoPtr = nullptr;
             png_bytep *m_rowBufferPtrs = nullptr;
+            void _copyConstructor(const Canvas& rhs);
     };
 
 

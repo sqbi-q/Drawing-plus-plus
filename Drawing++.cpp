@@ -93,6 +93,25 @@ Drawing::Color Drawing::ImageFile::getPixel(png_uint_32 x, png_uint_32 y){
 }
 
 
+void Drawing::Canvas::_copyConstructor(const Drawing::Canvas& canvas){
+    assert(canvas.m_pngPtr != nullptr);
+    assert(canvas.m_infoPtr != nullptr);
+    assert(canvas.m_rowBufferPtrs != nullptr);
+
+    png_uint_32 width = png_get_image_width(canvas.m_pngPtr, canvas.m_infoPtr);
+    png_uint_32 height = png_get_image_height(canvas.m_pngPtr, canvas.m_infoPtr);
+
+    initImage(canvas.m_pngPtr, canvas.m_infoPtr);
+    initBuffer();
+
+    for(int y = 0; y < height; y++) {
+        *(m_rowBufferPtrs[y]) = *(canvas.m_rowBufferPtrs[y]);
+    }
+}
+
+Drawing::Canvas::Canvas(const Drawing::Canvas& canvas){
+    _copyConstructor(canvas);
+}
 
 Drawing::Canvas::Canvas(png_uint_32 width, png_uint_32 height,
     int bitDepth, int colorType, int interlaceMethod, int compressMethod, int filterMethod){
@@ -112,20 +131,7 @@ Drawing::Canvas::~Canvas(){
 
 
 Drawing::Canvas& Drawing::Canvas::operator=(Canvas rhs){
-    assert(rhs.m_pngPtr != nullptr);
-    assert(rhs.m_infoPtr != nullptr);
-    assert(rhs.m_rowBufferPtrs != nullptr);
-
-    png_uint_32 width = png_get_image_width(rhs.m_pngPtr, rhs.m_infoPtr);
-    png_uint_32 height = png_get_image_height(rhs.m_pngPtr, rhs.m_infoPtr);
-
-    initImage(rhs.m_pngPtr, rhs.m_infoPtr);
-    initBuffer();
-
-    for(int y = 0; y < height; y++) {
-        *(m_rowBufferPtrs[y]) = *(rhs.m_rowBufferPtrs[y]);
-    }
-    
+    _copyConstructor(rhs);
     return *this;
 }
 
