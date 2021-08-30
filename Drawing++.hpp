@@ -8,46 +8,74 @@
 
 #define MINMACRO(a, b) ( (a)<(b) ? (a) : (b) )
 
-
-#define DEFAULT_DRAWING_SHAPE_FUNCS 1
-
+#define DEFAULT_DRAWING_FUNCS 1
 
 namespace Drawing {
     struct Color{
         Color (void) {}
         Color (double r, double g, double b, double a){
-            this->r = MINMACRO(r, 1);
-            this->g = MINMACRO(g, 1);
-            this->b = MINMACRO(b, 1);
-            this->a = MINMACRO(a, 1);
+            this->r = r;
+            this->g = g;
+            this->b = b;
+            this->a = a;
         }
+        Color& operator*=(const Color &rhs) {
+            multiply(rhs.r, rhs.g, rhs.b, rhs.a);
+            return *this;
+        }
+        Color& operator*=(const double x) {
+            multiply(x, x, x, x);
+            return *this;
+        }
+        void multiply(double r, double g, double b, double a){
+            this->r *= r;
+            this->g *= g;
+            this->b *= b;
+            this->a *= a;
+        }
+        void multiplyRGB(double r, double g, double b) { multiply(r, g, b, 1); }
         double r, g, b, a;
     };
+    inline Color operator*(Color lhs, const Color &rhs){
+        return Color(lhs.r*rhs.r, lhs.g*rhs.g, lhs.b*rhs.b, lhs.a*rhs.a);
+    }
+    inline Color operator*(Color lhs, const double x) {
+        return Color(lhs.r*x, lhs.g*x, lhs.b*x, lhs.a*x);
+    }
 
-    class Drawable;
-    using shape_fn_ptr = int(*)(Drawable* drawable, unsigned x, unsigned y);
-
+    
     //behold true beauty!!! 
     struct Point : std::vector<double> {
+        Point(void) {};
         Point(std::vector<double> coords) : std::vector<double>(coords) {}
         double x(void) const { return this->at(0); }
         double y(void) const { return this->at(1); }
         double z(void) const { return this->at(2); }
         double w(void) const { return this->at(3); }
-        Point operator*(const Point &rhs) {
-            Point product = std::vector<double>(this->size());
+        Point& operator*=(const Point &rhs){
             std::transform(this->begin(), this->end(), rhs.begin(), 
-                product.begin(), std::multiplies<double>());
-            return product;
+                this->begin(), std::multiplies<double>());
+            return *this;
         }
     };
+    inline Point operator*(Point lhs, const Point &rhs) {
+        std::transform(lhs.begin(), lhs.end(), rhs.begin(), 
+            lhs.begin(), std::multiplies<double>());
+        return lhs;
+    }
 
+
+    class Drawable;
+    class Canvas;
+    using draw_fn_ptr = void(*)(Drawable* drawable, Canvas* canvas);
 
     class Drawable {
         public:
             virtual Color getPixel(unsigned x, unsigned y) = 0;
-            virtual shape_fn_ptr getShapeFn(void) = 0;
+            void setDrawFn(draw_fn_ptr drawFnPtr) { drawFn = drawFnPtr; }
+
             std::vector<Point> points;
+            draw_fn_ptr drawFn = nullptr;
     };
 
 
@@ -55,19 +83,15 @@ namespace Drawing {
     class Figure : public Drawable {
         public:
             Figure (void) {};
-            Figure (Color bgColor, shape_fn_ptr shape_fn, 
+            Figure (Color bgColor, draw_fn_ptr drawFnPtr, 
                 std::vector<Point> points);
             
             Color getPixel(unsigned x, unsigned y) { return m_bgColor; }
-            shape_fn_ptr getShapeFn(void) { return m_shape_fn; }
 
         private:
             Color m_bgColor;
-            shape_fn_ptr m_shape_fn;
     };
 
-
-    static int wholeShape(Drawable* drawable, unsigned x, unsigned y) { return 1; }
     class ImageFile : public Drawable {
         public:
             ImageFile(void) {};
@@ -75,8 +99,7 @@ namespace Drawing {
 
             void loadPNGFile(const char* filename);
             Color getPixel(png_uint_32 x, png_uint_32 y);
-            shape_fn_ptr getShapeFn(void) { return wholeShape; }
-                    
+            
         private:
             png_bytep *m_rowBufferPtrs = nullptr;
     };
@@ -121,6 +144,8 @@ namespace Drawing {
             void addDrawable(std::shared_ptr<Drawable> drawable){
                 m_drawables.push_back(drawable);
             }
+
+            void putPixel(png_uint_32 x, png_uint_32 y, Drawing::Color color);
             void draw();
         
             double compare(Canvas &canvasB);
@@ -143,6 +168,9 @@ namespace Drawing {
                 );
             }
 
+            png_uint_32 getWidth(void) const { return png_get_image_width(m_pngPtr, m_infoPtr); }
+            png_uint_32 getHeight(void) const { return png_get_image_height(m_pngPtr, m_infoPtr); }
+
         private:
             std::vector<std::shared_ptr<Drawable>> m_drawables;
             png_structp m_pngPtr = nullptr;
@@ -153,27 +181,27 @@ namespace Drawing {
 
 
 
+#if DEFAULT_DRAWING_FUNCS
 
-
-
-
-
-
-
-#if DEFAULT_DRAWING_SHAPE_FUNCS
-
-    static int shape_rect_filled(Drawable* drawable, png_uint_32 x, png_uint_32 y){
-        assert(drawable->points.size() >= 2);
-        return x >= drawable->points[0].x() && x <= drawable->points[1].x() &&
-                y >= drawable->points[0].y() && y <= drawable->points[1].y();
+    static void filled_rect_func(Drawing::Drawable *drawable, Drawing::Canvas* canvas){
+        for(png_uint_32 y=0; y<canvas->getHeight(); y++){
+            for(png_uint_32 x=0; x<canvas->getWidth(); x++){
+        
+                if (x < drawable->points[0].x() || x > drawable->points[1].x() ||
+                    y < drawable->points[0].y() || y > drawable->points[1].y()) 
+                        continue;
+                Drawing::Color pixel = drawable->getPixel(x, y);
+                canvas->putPixel(x, y, pixel);
+            }
+        }
     }
+
 
     //https://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle
     //Code by Kornel Kisielewicz
     static float _sign(Point p1, Point p2, Point p3){
         return (p1.x() - p3.x()) * (p2.y() - p3.y()) - (p2.x() - p3.x()) * (p1.y() - p3.y());
     }
-
     static bool _isPointInTriangle (Point pt, Point v1, Point v2, Point v3){
         float d1, d2, d3;
         bool has_neg, has_pos;
@@ -189,10 +217,60 @@ namespace Drawing {
     }
     //
 
-    static int shape_triangle_filled(Drawing::Drawable* drawable, png_uint_32 x, png_uint_32 y){
+    static void shape_triangle_filled(Drawing::Drawable* drawable, Drawing::Canvas* canvas){
         assert(drawable->points.size() >= 3);
-        return _isPointInTriangle(Point({(double)x, (double)y}), 
-            drawable->points[0], drawable->points[1], drawable->points[2]);
+
+        for(png_uint_32 y=0; y<canvas->getHeight(); y++){
+            for(png_uint_32 x=0; x<canvas->getWidth(); x++){
+
+                if (_isPointInTriangle(Point({(double)x, (double)y}), 
+                    drawable->points[0], drawable->points[1], drawable->points[2])){
+                    
+                    Drawing::Color pixel = drawable->getPixel(x, y);
+                    canvas->putPixel(x, y, pixel);
+                }
+            }
+        }
     }
+
 #endif
+
+
+
+
+// #if DEFAULT_DRAWING_SHAPE_FUNCS
+
+//     static int shape_rect_filled(Drawable* drawable, png_uint_32 x, png_uint_32 y){
+//         assert(drawable->points.size() >= 2);
+//         return x >= drawable->points[0].x() && x <= drawable->points[1].x() &&
+//                 y >= drawable->points[0].y() && y <= drawable->points[1].y();
+//     }
+
+//     //https://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle
+//     //Code by Kornel Kisielewicz
+//     static float _sign(Point p1, Point p2, Point p3){
+//         return (p1.x() - p3.x()) * (p2.y() - p3.y()) - (p2.x() - p3.x()) * (p1.y() - p3.y());
+//     }
+
+//     static bool _isPointInTriangle (Point pt, Point v1, Point v2, Point v3){
+//         float d1, d2, d3;
+//         bool has_neg, has_pos;
+
+//         d1 = _sign(pt, v1, v2);
+//         d2 = _sign(pt, v2, v3);
+//         d3 = _sign(pt, v3, v1);
+
+//         has_neg = (d1 < 0) || (d2 < 0) || (d3 < 0);
+//         has_pos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+
+//         return !(has_neg && has_pos);
+//     }
+//     //
+
+//     static int shape_triangle_filled(Drawing::Drawable* drawable, png_uint_32 x, png_uint_32 y){
+//         assert(drawable->points.size() >= 3);
+//         return _isPointInTriangle(Point({(double)x, (double)y}), 
+//             drawable->points[0], drawable->points[1], drawable->points[2]);
+//     }
+// #endif
 }

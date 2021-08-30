@@ -1,18 +1,26 @@
 #include "Drawing++.hpp"
-
+#include <iostream>
 
 Drawing::Figure::Figure(Color bgColor,
-    shape_fn_ptr shape_fn, std::vector<Point> points){
+    draw_fn_ptr drawFnPtr, std::vector<Point> points){
     
-    m_shape_fn = shape_fn;
+    this->drawFn = drawFnPtr;
     m_bgColor = bgColor;
     this->points = points;
 }
 
 
+static void _imageFileDrawFn(Drawing::Drawable* drawable, Drawing::Canvas* canvas){
+    for(png_uint_32 x=0; x<canvas->getWidth(); x++){  
+        for(png_uint_32 y=0; y<canvas->getHeight(); y++){
+            canvas->putPixel(x, y, drawable->getPixel(x, y));
+        }
+    }
+}
 
 Drawing::ImageFile::ImageFile(const char* filename) {
     loadPNGFile(filename);
+    setDrawFn(_imageFileDrawFn);
 }
 
 
@@ -78,16 +86,17 @@ void Drawing::ImageFile::loadPNGFile(const char* filename) {
     png_destroy_read_struct(&pngPtr, &infoPtr, NULL);
 }
 
-Drawing::Color Drawing::ImageFile::getPixel(png_uint_32 x, png_uint_32 y){    
+Drawing::Color Drawing::ImageFile::getPixel(png_uint_32 x, png_uint_32 y){
     assert(m_rowBufferPtrs != NULL);
 
     Drawing::Color color;
     png_bytep row = m_rowBufferPtrs[y];
+    const png_byte channels = 4;
 
-    color.r = row[x] / 255.0;
-    color.g = row[x+1] / 255.0;
-    color.b = row[x+2] / 255.0;
-    color.a = row[x+3] / 255.0;
+    color.r = row[channels*x] / 255.0;
+    color.g = row[channels*x+1] / 255.0;
+    color.b = row[channels*x+2] / 255.0;
+    color.a = row[channels*x+3] / 255.0;
 
     return color;
 }
@@ -184,53 +193,40 @@ void Drawing::Canvas::initBuffer(Color bgColor){
         
         //set default background color
         for (unsigned x=0; x<rowbytes; x+=4){
-            m_rowBufferPtrs[y][x] = bgColor.r;
-            m_rowBufferPtrs[y][x+1] = bgColor.g;
-            m_rowBufferPtrs[y][x+2]= bgColor.b;
-            m_rowBufferPtrs[y][x+3] = bgColor.a;
+            m_rowBufferPtrs[y][x] =     bgColor.r * 255;
+            m_rowBufferPtrs[y][x+1] =   bgColor.g * 255;
+            m_rowBufferPtrs[y][x+2] =   bgColor.b * 255;
+            m_rowBufferPtrs[y][x+3] =   bgColor.a * 255;
         }
     }
 }
 
 
-static double mix(double x, double y, double a){
-    return x*(1-a) + y*a;
-}
+// static double mix(double x, double y, double a){
+//     return x*(1-a) + y*a;
+// }
 
-static double max(double x, double y){
-    if (x < y) return y;
-    return x;
-}
+// static double max(double x, double y){
+//     if (x < y) return y;
+//     return x;
+// }
 
-void drawPixel(png_bytep pixel, std::vector<std::shared_ptr<Drawing::Drawable>> drawables, 
-    png_uint_32 x, png_uint_32 y, png_byte channels){
+void Drawing::Canvas::putPixel(
+    png_uint_32 x, png_uint_32 y, Drawing::Color color){
+    
+    const png_byte channels = png_get_channels(m_pngPtr, m_infoPtr);
+    png_bytep pixel = &m_rowBufferPtrs[y][x*channels]; //C = {0...255}
 
-    double r = pixel[0];
-    double g = pixel[1];
-    double b = pixel[2];
-    double a = pixel[3];
+    const double r = pixel[0];
+    const double g = pixel[1];
+    const double b = pixel[2];
+    const double a = pixel[3] / 255.0;
+    color.multiplyRGB(255, 255, 255);
 
-
-    for (auto& drawable : drawables){
-        // const int shape = (drawable->shape_fn != nullptr) ? 
-            // drawable->shape_fn(drawable, x, y) : 1;
-        
-        Drawing::shape_fn_ptr shape_fn = drawable->getShapeFn();
-        const int shape = shape_fn(drawable.get(), x, y);
-        
-        Drawing::Color color = drawable->getPixel(x*channels, y);
-
-        a = max(a, color.a*shape);
-        r = mix(r, color.r*shape,   color.a*shape);
-        g = mix(g, color.g*shape,   color.a*shape);
-        b = mix(b, color.b*shape,   color.a*shape);
-
-    }  
-
-    pixel[0] = (png_byte) round(r*255);
-    pixel[1] = (png_byte) round(g*255);
-    pixel[2] = (png_byte) round(b*255);
-    pixel[3] = (png_byte) round(a*255);
+    // C = Ca*Aa*(1-Ab) + Cb*Ab
+    pixel[0] = (r*a*(1-color.a) + color.r*color.a);
+    pixel[1] = (g*a*(1-color.a) + color.g*color.a);
+    pixel[2] = (b*a*(1-color.a) + color.b*color.a);
 }
 
 void Drawing::Canvas::draw(){
@@ -238,24 +234,41 @@ void Drawing::Canvas::draw(){
     assert(m_pngPtr != nullptr);
     assert(m_infoPtr != nullptr);
 
-    png_uint_32 height = png_get_image_height(m_pngPtr, m_infoPtr);
-    png_uint_32 width = png_get_image_width(m_pngPtr, m_infoPtr);
-    png_byte channels = png_get_channels(m_pngPtr, m_infoPtr);
+    const png_uint_32 height = png_get_image_height(m_pngPtr, m_infoPtr);
+    const png_uint_32 width = png_get_image_width(m_pngPtr, m_infoPtr);
 
-    // for (png_uint_32 y=0; y<height; y++){
-    //     for (png_uint_32 x=0; x<width; x++){
-    //         png_bytep pixel = &m_rowBufferPtrs[y][x*channels];
-    //         drawPixel(pixel, m_drawables, x, y, channels);
+    
+    // float x1 = 20;
+    // float x2 = 80;
+    // float y1 = 20;
+    // float y2 = 90;
+
+    // float dx = x2-x1;
+    // float dy = y2-y1;
+
+    // float m = dy/dx;
+    // float b = y1 - (m*x1);
+
+    // int j = 0;
+    // for (size_t i = 0; i < dx; i++) {
+    //     putPixel(m_rowBufferPtrs, (x1+i)*channels, round(m*(x1+i)+b), Drawing::Color(0, 0, 1, 1));
+    // }
+
+    for (auto& drawable : m_drawables){
+        if(drawable->drawFn != nullptr){
+            drawable->drawFn(drawable.get(), this);
+        }
+    }
+
+    //iterative call
+    // for(png_uint_32 y=0; y<this->getHeight(); y++){
+    //     for(png_uint_32 x=0; x<this->getWidth(); x++){
+    //         for (auto& drawable : m_drawables){
+    //             if(drawable->iterdrawFn != nullptr)
+    //                 drawable->iterdrawFn(drawable.get(), this, x, y);
+    //         }
     //     }
     // }
-    png_uint_32 x = 0;
-    png_uint_32 y = 0;
-    for (png_uint_32 n=0; n<width*height; n++){
-        x = n % width;
-        y = n / width;
-        png_bytep pixel = &m_rowBufferPtrs[y][x*channels];
-        drawPixel(pixel, m_drawables, x, y, channels);
-    }
 }
 
 double Drawing::Canvas::compare(Canvas &canvasB){
@@ -307,3 +320,37 @@ void Drawing::Canvas::bufferToFile(const char* filepath){
 
     fclose(fp);
 }
+
+// __attribute__((hot)) 
+// void drawPixel(png_bytep pixel, std::vector<std::shared_ptr<Drawing::Drawable>> drawables, 
+//     png_uint_32 x, png_uint_32 y, png_byte channels){
+
+//     return;
+
+//     double r = pixel[0];
+//     double g = pixel[1];
+//     double b = pixel[2];
+//     double a = pixel[3];
+
+
+//     for (auto& drawable : drawables){
+//         // const int shape = (drawable->shape_fn != nullptr) ? 
+//             // drawable->shape_fn(drawable, x, y) : 1;
+        
+//         Drawing::shape_fn_ptr shape_fn = drawable->getShapeFn();
+//         const int shape = shape_fn(drawable.get(), x, y);
+        
+//         Drawing::Color color = drawable->getPixel(x*channels, y);
+
+//         a = max(a, color.a*shape);
+//         r = mix(r, color.r*shape,   color.a*shape);
+//         g = mix(g, color.g*shape,   color.a*shape);
+//         b = mix(b, color.b*shape,   color.a*shape);
+
+//     }
+
+//     pixel[0] = (png_byte) round(r*255);
+//     pixel[1] = (png_byte) round(g*255);
+//     pixel[2] = (png_byte) round(b*255);
+//     pixel[3] = (png_byte) round(a*255);
+// }
