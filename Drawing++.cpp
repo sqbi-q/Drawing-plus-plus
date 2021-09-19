@@ -370,16 +370,19 @@ void Drawing::Canvas::bufferToFile(const char* filepath){
     if (!fp) abort();
 
     assert(m_rowBufferPtrs != NULL);
-    assert(m_pngPtr != NULL);
     assert(m_infoPtr != NULL);
 
-    png_init_io(m_pngPtr, fp);
-    png_write_info(m_pngPtr, m_infoPtr);
+    png_structp filePtr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if(!filePtr) abort();
 
-    png_write_image(m_pngPtr, m_rowBufferPtrs);
-    png_write_end(m_pngPtr, NULL);
+    png_init_io(filePtr, fp);
+    png_write_info(filePtr, m_infoPtr);
+
+    png_write_image(filePtr, m_rowBufferPtrs);
+    png_write_end(filePtr, NULL);
 
     fclose(fp);
+    png_destroy_read_struct(&filePtr, NULL, NULL);
 }
 
 void Drawing::rect_filled(Drawing::Drawable *drawable, Drawing::Canvas* canvas){
