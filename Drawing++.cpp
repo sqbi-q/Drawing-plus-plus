@@ -115,6 +115,7 @@ void Drawing::Canvas::_copyConstructor(const Drawing::Canvas& canvas){
     for(int y = 0; y < height; y++) {
         *(m_rowBufferPtrs[y]) = *(canvas.m_rowBufferPtrs[y]);
     }
+    m_drawables = canvas.m_drawables;
 }
 
 Drawing::Canvas::Canvas(const Drawing::Canvas& canvas){
