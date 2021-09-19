@@ -6,8 +6,6 @@
 #include <cmath>
 #include <algorithm>
 
-#define MINMACRO(a, b) ( (a)<(b) ? (a) : (b) )
-
 #define DEFAULT_DRAWING_FUNCS 1
 
 namespace Drawing {
@@ -146,6 +144,19 @@ namespace Drawing {
             }
 
             void putPixel(png_uint_32 x, png_uint_32 y, Drawing::Color color);
+            void setPixel(png_uint_32 x, png_uint_32 y, Drawing::Color color);
+            
+            void fillputPixels(png_uint_32 x1, png_uint_32 x2, png_uint_32 y, 
+                Drawing::Color color);
+            void fillputPixels(png_uint_32 x1, png_uint_32 x2, 
+                png_uint_32 y1, png_uint_32 y2, Drawing::Color color);
+
+            void fillsetPixels(png_uint_32 x1, png_uint_32 x2, png_uint_32 y, 
+                Drawing::Color color);
+            void fillsetPixels(png_uint_32 x1, png_uint_32 x2, 
+                png_uint_32 y1, png_uint_32 y2, Drawing::Color color);
+
+
             void draw();
         
             double compare(Canvas &canvasB);
@@ -179,98 +190,8 @@ namespace Drawing {
             void _copyConstructor(const Canvas& rhs);
     };
 
-
-
-#if DEFAULT_DRAWING_FUNCS
-
-    static void filled_rect_func(Drawing::Drawable *drawable, Drawing::Canvas* canvas){
-        for(png_uint_32 y=0; y<canvas->getHeight(); y++){
-            for(png_uint_32 x=0; x<canvas->getWidth(); x++){
-        
-                if (x < drawable->points[0].x() || x > drawable->points[1].x() ||
-                    y < drawable->points[0].y() || y > drawable->points[1].y()) 
-                        continue;
-                Drawing::Color pixel = drawable->getPixel(x, y);
-                canvas->putPixel(x, y, pixel);
-            }
-        }
-    }
-
-
-    //https://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle
-    //Code by Kornel Kisielewicz
-    static float _sign(Point p1, Point p2, Point p3){
-        return (p1.x() - p3.x()) * (p2.y() - p3.y()) - (p2.x() - p3.x()) * (p1.y() - p3.y());
-    }
-    static bool _isPointInTriangle (Point pt, Point v1, Point v2, Point v3){
-        float d1, d2, d3;
-        bool has_neg, has_pos;
-
-        d1 = _sign(pt, v1, v2);
-        d2 = _sign(pt, v2, v3);
-        d3 = _sign(pt, v3, v1);
-
-        has_neg = (d1 < 0) || (d2 < 0) || (d3 < 0);
-        has_pos = (d1 > 0) || (d2 > 0) || (d3 > 0);
-
-        return !(has_neg && has_pos);
-    }
-    //
-
-    static void shape_triangle_filled(Drawing::Drawable* drawable, Drawing::Canvas* canvas){
-        assert(drawable->points.size() >= 3);
-
-        for(png_uint_32 y=0; y<canvas->getHeight(); y++){
-            for(png_uint_32 x=0; x<canvas->getWidth(); x++){
-
-                if (_isPointInTriangle(Point({(double)x, (double)y}), 
-                    drawable->points[0], drawable->points[1], drawable->points[2])){
-                    
-                    Drawing::Color pixel = drawable->getPixel(x, y);
-                    canvas->putPixel(x, y, pixel);
-                }
-            }
-        }
-    }
-
-#endif
-
-
-
-
-// #if DEFAULT_DRAWING_SHAPE_FUNCS
-
-//     static int shape_rect_filled(Drawable* drawable, png_uint_32 x, png_uint_32 y){
-//         assert(drawable->points.size() >= 2);
-//         return x >= drawable->points[0].x() && x <= drawable->points[1].x() &&
-//                 y >= drawable->points[0].y() && y <= drawable->points[1].y();
-//     }
-
-//     //https://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle
-//     //Code by Kornel Kisielewicz
-//     static float _sign(Point p1, Point p2, Point p3){
-//         return (p1.x() - p3.x()) * (p2.y() - p3.y()) - (p2.x() - p3.x()) * (p1.y() - p3.y());
-//     }
-
-//     static bool _isPointInTriangle (Point pt, Point v1, Point v2, Point v3){
-//         float d1, d2, d3;
-//         bool has_neg, has_pos;
-
-//         d1 = _sign(pt, v1, v2);
-//         d2 = _sign(pt, v2, v3);
-//         d3 = _sign(pt, v3, v1);
-
-//         has_neg = (d1 < 0) || (d2 < 0) || (d3 < 0);
-//         has_pos = (d1 > 0) || (d2 > 0) || (d3 > 0);
-
-//         return !(has_neg && has_pos);
-//     }
-//     //
-
-//     static int shape_triangle_filled(Drawing::Drawable* drawable, png_uint_32 x, png_uint_32 y){
-//         assert(drawable->points.size() >= 3);
-//         return _isPointInTriangle(Point({(double)x, (double)y}), 
-//             drawable->points[0], drawable->points[1], drawable->points[2]);
-//     }
-// #endif
+    #if DEFAULT_DRAWING_FUNCS
+    void rect_filled(Drawing::Drawable *drawable, Drawing::Canvas* canvas);
+    void triangle_filled(Drawing::Drawable *drawable, Drawing::Canvas* canvas);
+    #endif
 }

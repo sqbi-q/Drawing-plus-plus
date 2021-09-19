@@ -1,5 +1,4 @@
 #include "Drawing++.hpp"
-#include <iostream>
 
 Drawing::Figure::Figure(Color bgColor,
     draw_fn_ptr drawFnPtr, std::vector<Point> points){
@@ -202,73 +201,134 @@ void Drawing::Canvas::initBuffer(Color bgColor){
 }
 
 
-// static double mix(double x, double y, double a){
-//     return x*(1-a) + y*a;
-// }
 
-// static double max(double x, double y){
-//     if (x < y) return y;
-//     return x;
-// }
+#define mixColor(oldColor, alphaOld, newColor, alphaNew) \
+    oldColor*alphaOld*(1-alphaNew) + newColor*alphaNew
+
+/*
+alphaMixConst = alphaOld * negAlphaConst
+negAlphaConst = (1-alphaNew)
+newColorConst = newColor * alphaNew
+*/
+#define mixColor2(oldColor, alphaMixConst, newColorConst) \
+    oldColor*alphaMixConst + newColorConst
+
 
 void Drawing::Canvas::putPixel(
     png_uint_32 x, png_uint_32 y, Drawing::Color color){
     
     const png_byte channels = png_get_channels(m_pngPtr, m_infoPtr);
     png_bytep pixel = &m_rowBufferPtrs[y][x*channels]; //C = {0...255}
+    const double a = pixel[3] / (int) 255;
+    const double alphaMix = a * (1-color.a);
 
-    const double r = pixel[0];
-    const double g = pixel[1];
-    const double b = pixel[2];
-    const double a = pixel[3] / 255.0;
+    const double _255mulAlpha = 255*color.a;
+    color.multiplyRGB(_255mulAlpha, _255mulAlpha, _255mulAlpha); //newColorConstant created
+
+    pixel[0] = mixColor2(pixel[0], alphaMix, color.r);
+    pixel[1] = mixColor2(pixel[1], alphaMix, color.g);
+    pixel[2] = mixColor2(pixel[2], alphaMix, color.b);
+}
+
+void Drawing::Canvas::setPixel(
+    png_uint_32 x, png_uint_32 y, Drawing::Color color){
+
+    const png_byte channels = png_get_channels(m_pngPtr, m_infoPtr);
     color.multiplyRGB(255, 255, 255);
 
-    // C = Ca*Aa*(1-Ab) + Cb*Ab
-    pixel[0] = (r*a*(1-color.a) + color.r*color.a);
-    pixel[1] = (g*a*(1-color.a) + color.g*color.a);
-    pixel[2] = (b*a*(1-color.a) + color.b*color.a);
+    m_rowBufferPtrs[y][x*channels] = color.r;
+    m_rowBufferPtrs[y][x*channels+1] = color.g;
+    m_rowBufferPtrs[y][x*channels+2] = color.b;
 }
+
+void Drawing::Canvas::fillputPixels(
+    png_uint_32 x1, png_uint_32 x2, png_uint_32 y, 
+    Drawing::Color color){
+    
+    const png_byte channels = png_get_channels(m_pngPtr, m_infoPtr);
+    const double negAlpha = 1-color.a;
+    const double _255mulAlpha = 255*color.a;
+    color.multiplyRGB(_255mulAlpha, _255mulAlpha, _255mulAlpha); //newColorConstant created
+
+    png_bytep row = m_rowBufferPtrs[y];
+
+    for (png_uint_32 x=x1; x<x2; x++){
+
+        const double bufferAlpha = *(row+x*channels+3) / (int) 255;
+        const double alphaMix = bufferAlpha*negAlpha;
+
+        row[x*channels] = mixColor2(row[x*channels], alphaMix, color.r);
+        row[x*channels+1] = mixColor2(row[x*channels+1], alphaMix, color.g);
+        row[x*channels+2] = mixColor2(row[x*channels+2], alphaMix, color.b);
+    }
+}
+void Drawing::Canvas::fillputPixels(png_uint_32 x1, png_uint_32 x2,
+    png_uint_32 y1, png_uint_32 y2, Drawing::Color color){
+
+    const png_byte channels = png_get_channels(m_pngPtr, m_infoPtr);
+    const double negAlpha = 1-color.a;
+    const double _255mulAlpha = 255*color.a;
+    color.multiplyRGB(_255mulAlpha, _255mulAlpha, _255mulAlpha); //newColorConstant created
+
+    for (png_uint_32 y=y1; y<y2; y++){
+        png_bytep row = m_rowBufferPtrs[y];
+
+        for (png_uint_32 x=x1; x<x2; x++){
+
+            const double bufferAlpha = *(row+x*channels+3) / (int) 255;
+            const double alphaMix = bufferAlpha*negAlpha;
+
+            row[x*channels] = mixColor2(row[x*channels], alphaMix, color.r);
+            row[x*channels+1] = mixColor2(row[x*channels+1], alphaMix, color.g);
+            row[x*channels+2] = mixColor2(row[x*channels+2], alphaMix, color.b);
+        }
+    }
+}
+
+void Drawing::Canvas::fillsetPixels(
+    png_uint_32 x1, png_uint_32 x2, png_uint_32 y, 
+    Drawing::Color color){
+    
+    const png_byte channels = png_get_channels(m_pngPtr, m_infoPtr);
+    color.multiplyRGB(255, 255, 255);
+
+    png_bytep row = m_rowBufferPtrs[y];
+
+    for (png_uint_32 x=x1; x<x2; x++){
+        row[x*channels] = (png_byte) color.r;
+        row[x*channels+1] = (png_byte) color.g;
+        row[x*channels+2] = (png_byte) color.b;
+    }
+}
+void Drawing::Canvas::fillsetPixels(png_uint_32 x1, png_uint_32 x2,
+    png_uint_32 y1, png_uint_32 y2, Drawing::Color color){
+    
+    const png_byte channels = png_get_channels(m_pngPtr, m_infoPtr);
+    color.multiplyRGB(255, 255, 255);
+
+    for (png_uint_32 y=y1; y<y2; y++){
+        png_bytep row = m_rowBufferPtrs[y];
+
+        for (png_uint_32 x=x1; x<x2; x++){
+            row[x*channels] = (png_byte) color.r;
+            row[x*channels+1] = (png_byte) color.g;
+            row[x*channels+2] = (png_byte) color.b;
+        }
+    }
+}
+
+
+
 
 void Drawing::Canvas::draw(){
     assert(m_rowBufferPtrs != nullptr);
     assert(m_pngPtr != nullptr);
     assert(m_infoPtr != nullptr);
 
-    const png_uint_32 height = png_get_image_height(m_pngPtr, m_infoPtr);
-    const png_uint_32 width = png_get_image_width(m_pngPtr, m_infoPtr);
-
-    
-    // float x1 = 20;
-    // float x2 = 80;
-    // float y1 = 20;
-    // float y2 = 90;
-
-    // float dx = x2-x1;
-    // float dy = y2-y1;
-
-    // float m = dy/dx;
-    // float b = y1 - (m*x1);
-
-    // int j = 0;
-    // for (size_t i = 0; i < dx; i++) {
-    //     putPixel(m_rowBufferPtrs, (x1+i)*channels, round(m*(x1+i)+b), Drawing::Color(0, 0, 1, 1));
-    // }
-
     for (auto& drawable : m_drawables){
-        if(drawable->drawFn != nullptr){
+        if(drawable->drawFn != nullptr)
             drawable->drawFn(drawable.get(), this);
-        }
     }
-
-    //iterative call
-    // for(png_uint_32 y=0; y<this->getHeight(); y++){
-    //     for(png_uint_32 x=0; x<this->getWidth(); x++){
-    //         for (auto& drawable : m_drawables){
-    //             if(drawable->iterdrawFn != nullptr)
-    //                 drawable->iterdrawFn(drawable.get(), this, x, y);
-    //         }
-    //     }
-    // }
 }
 
 double Drawing::Canvas::compare(Canvas &canvasB){
@@ -321,36 +381,54 @@ void Drawing::Canvas::bufferToFile(const char* filepath){
     fclose(fp);
 }
 
-// __attribute__((hot)) 
-// void drawPixel(png_bytep pixel, std::vector<std::shared_ptr<Drawing::Drawable>> drawables, 
-//     png_uint_32 x, png_uint_32 y, png_byte channels){
+void Drawing::rect_filled(Drawing::Drawable *drawable, Drawing::Canvas* canvas){
+    const Drawing::Color pixel = drawable->getPixel(0, 0);
+    canvas->fillputPixels(drawable->points[0].x(), drawable->points[1].x(), 
+        drawable->points[0].y(), drawable->points[1].y(), pixel);
+}
 
-//     return;
-
-//     double r = pixel[0];
-//     double g = pixel[1];
-//     double b = pixel[2];
-//     double a = pixel[3];
-
-
-//     for (auto& drawable : drawables){
-//         // const int shape = (drawable->shape_fn != nullptr) ? 
-//             // drawable->shape_fn(drawable, x, y) : 1;
-        
-//         Drawing::shape_fn_ptr shape_fn = drawable->getShapeFn();
-//         const int shape = shape_fn(drawable.get(), x, y);
-        
-//         Drawing::Color color = drawable->getPixel(x*channels, y);
-
-//         a = max(a, color.a*shape);
-//         r = mix(r, color.r*shape,   color.a*shape);
-//         g = mix(g, color.g*shape,   color.a*shape);
-//         b = mix(b, color.b*shape,   color.a*shape);
-
-//     }
-
-//     pixel[0] = (png_byte) round(r*255);
-//     pixel[1] = (png_byte) round(g*255);
-//     pixel[2] = (png_byte) round(b*255);
-//     pixel[3] = (png_byte) round(a*255);
+// static inline double slope(Drawing::Point &A, Drawing::Point &B){
+//     return (B.y() - A.y()) / (B.x() - A.x());
 // }
+static double invSlope(Drawing::Point &A, Drawing::Point &B){
+    return (B.x() - A.x()) / (B.y() - A.y());
+}
+
+// static double line(double x, Drawing::Point &A, Drawing::Point &B){
+//     return slope(A, B) * (x - B.x()) + B.y();
+// }
+// static double line_zero(double y, Drawing::Point &A, Drawing::Point &B){
+//     if (B.x()-A.x() == 0) return A.x();
+//     return (y-B.y())/slope(A,B) + B.x();
+// }
+static double line_zero(double y, Drawing::Point &A, Drawing::Point &B){
+    if (B.y()-A.y() == 0) return A.x();
+    return (y-B.y())*invSlope(A,B) + B.x();
+}
+
+void Drawing::triangle_filled(Drawing::Drawable *drawable, Drawing::Canvas* canvas){
+    const Drawing::Color color = drawable->getPixel(0, 0);
+
+    std::sort(drawable->points.begin(), drawable->points.end(), [](Drawing::Point a, Drawing::Point b) {
+        return a.y() < b.y();
+    });
+
+    for(png_uint_32 y=ceil(drawable->points[0].y()); y<drawable->points[2].y(); y++){
+        
+        png_uint_32 x1 = line_zero(y, drawable->points[0], drawable->points[2]);
+        png_uint_32 x2;
+
+        if (y < drawable->points[1].y())
+            x2 = line_zero(y, drawable->points[0], drawable->points[1]);
+        else
+            x2 = line_zero(y, drawable->points[1], drawable->points[2]);
+
+        if(x1 > x2) 
+            std::swap(x1, x2);
+
+        canvas->fillputPixels(
+            x1, x2,
+            y, color
+        );
+    }
+}

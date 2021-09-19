@@ -22,15 +22,9 @@ g++ Example/Example.cpp Drawing++.o `libpng-config --libs --cflags`
 
 //user-defined draw function
 static void filled_rect_func(Drawing::Drawable *drawable, Drawing::Canvas* canvas){
-    for(png_uint_32 y=0; y<canvas->getHeight(); y++){
-        for(png_uint_32 x=0; x<canvas->getWidth(); x++){
-            if (x < drawable->points[0].x() || x > drawable->points[1].x() ||
-                y < drawable->points[0].y() || y > drawable->points[1].y()) 
-                    continue;
-            Drawing::Color pixel = drawable->getPixel(x, y);
-            canvas->putPixel(x, y, pixel);
-        }
-    }
+    const Drawing::Color pixel = drawable->getPixel(0, 0);
+    canvas->fillputPixels(drawable->points[0].x(), drawable->points[1].x(), 
+        drawable->points[0].y(), drawable->points[1].y(), pixel);
 }
 
 
